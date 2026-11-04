@@ -1,0 +1,80 @@
+name: Rust release artifacts
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux x86_64
+            runner: ubuntu-22.04
+            platform: linux-x86_64
+          - label: macOS x86_64
+            runner: macos-15-intel
+            platform: macos-x86_64
+          - label: Windows x86_64
+            runner: windows-2022
+            platform: windows-x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build locked release binary
+        run: cargo build --locked --release --manifest-path rust/Cargo.toml
+
+      - name: Smoke check and assemble bundle (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          help_output="$(rust/target/release/DockQ --help 2>&1)"
+          printf '%s\n' "$help_output"
+          test -n "$help_output"
+          bundle="dist/DockQ-${{ matrix.platform }}"
+          mkdir -p "$bundle"
+          cp rust/target/release/DockQ "$bundle/DockQ"
+          cp LICENSE rust/README.md "$bundle/"
+          printf 'commit=%s\nrustc=%s\nplatform=%s\n' \
+            "$(git rev-parse HEAD)" "$(rustc --version)" "${{ matrix.platform }}" \
+            > "$bundle/BUILD-INFO.txt"
+          (cd "$bundle" && shasum -a 256 DockQ README.md LICENSE BUILD-INFO.txt > SHA256SUMS.txt)
+
+      - name: Smoke check and assemble bundle (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $helpOutput = (& rust/target/release/DockQ.exe --help 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0) { throw "DockQ --help exited with $LASTEXITCODE" }
+          if ([string]::IsNullOrWhiteSpace($helpOutput)) { throw "DockQ --help produced no output" }
+          Write-Output $helpOutput
+          $bundle = 'dist/DockQ-${{ matrix.platform }}'
+          New-Item -ItemType Directory -Force -Path $bundle | Out-Null
+          Copy-Item rust/target/release/DockQ.exe "$bundle/DockQ.exe"
+          Copy-Item LICENSE, rust/README.md $bundle
+          @("commit=$(git rev-parse HEAD)", "rustc=$(rustc --version)", "platform=${{ matrix.platform }}") |
+            Set-Content -Encoding utf8 "$bundle/BUILD-INFO.txt"
+          $lines = Get-ChildItem $bundle -File | Where-Object Name -ne 'SHA256SUMS.txt' |
+            Sort-Object Name | ForEach-Object {
+              $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()
+              "$hash  $($_.Name)"
+            }
+          $lines | Set-Content -Encoding ascii "$bundle/SHA256SUMS.txt"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DockQ-${{ matrix.platform }}
+          path: dist/DockQ-${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14
