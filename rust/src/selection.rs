@@ -10,6 +10,33 @@ const BACKBONE_ATOMS: &[&str] = &[
     "C5'",
 ];
 
+/// Compact, ordered backbone coordinates cached once per chain.
+#[derive(Debug, Clone)]
+pub(crate) struct CachedBackboneResidue {
+    coordinates: [[f64; 3]; 16],
+    present: u16,
+}
+
+pub(crate) fn cache_backbone(chain: &Chain) -> Vec<CachedBackboneResidue> {
+    chain
+        .residues
+        .iter()
+        .map(|residue| {
+            let mut cached = CachedBackboneResidue {
+                coordinates: [[0.0; 3]; 16],
+                present: 0,
+            };
+            for (index, name) in BACKBONE_ATOMS.iter().enumerate() {
+                if let Some(atom) = residue.atoms.iter().find(|atom| atom.name == **name) {
+                    cached.coordinates[index] = atom.coord;
+                    cached.present |= 1 << index;
+                }
+            }
+            cached
+        })
+        .collect()
+}
+
 /// Select corresponding backbone coordinates for matched residue index pairs.
 ///
 /// `subset` contains positions within `pairs`; duplicates are removed and
@@ -46,6 +73,44 @@ pub fn backbone_pairs(
             ) {
                 selected.model.push(model_atom.coord);
                 selected.native.push(native_atom.coord);
+            }
+        }
+    }
+
+    if selected.model.is_empty() {
+        return Err(DockError("backbone atom selection is empty".into()));
+    }
+    Ok(selected)
+}
+
+pub(crate) fn backbone_pairs_cached(
+    model: &[CachedBackboneResidue],
+    native: &[CachedBackboneResidue],
+    model_id: &str,
+    native_id: &str,
+    pairs: &[(usize, usize)],
+    subset: Option<&[usize]>,
+) -> Result<AtomPairs> {
+    let positions = selected_positions(pairs.len(), subset, "matched residue pair")?;
+    let mut selected = AtomPairs::default();
+
+    for position in positions {
+        let (model_index, native_index) = pairs[position];
+        let model_residue = model.get(model_index).ok_or_else(|| {
+            DockError(format!(
+                "model residue index {model_index} is out of range for chain {model_id}"
+            ))
+        })?;
+        let native_residue = native.get(native_index).ok_or_else(|| {
+            DockError(format!(
+                "native residue index {native_index} is out of range for chain {native_id}"
+            ))
+        })?;
+        let shared = model_residue.present & native_residue.present;
+        for atom_index in 0..BACKBONE_ATOMS.len() {
+            if shared & (1 << atom_index) != 0 {
+                selected.model.push(model_residue.coordinates[atom_index]);
+                selected.native.push(native_residue.coordinates[atom_index]);
             }
         }
     }

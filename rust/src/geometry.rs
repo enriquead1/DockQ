@@ -11,10 +11,19 @@ use crate::types::{Point, RigidTransform};
 /// SVD yields a finite result; reflections are corrected to keep the rotation
 /// proper. The convention is `target = rotation * source + translation`.
 pub fn fit(source: &[Point], target: &[Point]) -> Result<RigidTransform> {
-    validate_pair_sets(source, target, "rigid fit")?;
+    let mut transform = fit_transform(source, target)?;
+    transform.rmsd = transformed_rmsd(source, target, &transform)?;
+    Ok(transform)
+}
 
-    let source_center = centroid(source);
-    let target_center = centroid(target);
+/// Fit a rigid transform without calculating RMSD for the fitted coordinates.
+/// Use this when only the transform is needed, such as aligning the receptor
+/// before measuring ligand RMSD.
+pub fn fit_transform(source: &[Point], target: &[Point]) -> Result<RigidTransform> {
+    validate_pair_lengths(source, target, "rigid fit")?;
+
+    let source_center = centroid(source, "rigid fit")?;
+    let target_center = centroid(target, "rigid fit")?;
     if !source_center.iter().all(|value| value.is_finite())
         || !target_center.iter().all(|value| value.is_finite())
     {
@@ -54,22 +63,34 @@ pub fn fit(source: &[Point], target: &[Point]) -> Result<RigidTransform> {
         ));
     }
 
-    let mut transform = RigidTransform {
+    Ok(RigidTransform {
         rotation: matrix_to_array(&rotation),
         translation: [translation.x, translation.y, translation.z],
         rmsd: 0.0,
-    };
-    let fitted: Vec<_> = source
-        .iter()
-        .map(|&point| apply(point, &transform))
-        .collect();
-    transform.rmsd = rmsd(&fitted, target)?;
-    Ok(transform)
+    })
 }
 
 /// Apply a source-to-target transform to one point.
 pub fn apply(point: Point, transform: &RigidTransform) -> Point {
-    let rotation = Matrix3::from_row_slice(&[
+    apply_with_components(
+        point,
+        &rotation_matrix(transform),
+        Vector3::from(transform.translation),
+    )
+}
+
+/// Apply one transform to a coordinate set, constructing its matrix once.
+pub fn apply_all(points: &[Point], transform: &RigidTransform) -> Vec<Point> {
+    let rotation = rotation_matrix(transform);
+    let translation = Vector3::from(transform.translation);
+    points
+        .iter()
+        .map(|&point| apply_with_components(point, &rotation, translation))
+        .collect()
+}
+
+fn rotation_matrix(transform: &RigidTransform) -> Matrix3<f64> {
+    Matrix3::from_row_slice(&[
         transform.rotation[0][0],
         transform.rotation[0][1],
         transform.rotation[0][2],
@@ -79,9 +100,49 @@ pub fn apply(point: Point, transform: &RigidTransform) -> Point {
         transform.rotation[2][0],
         transform.rotation[2][1],
         transform.rotation[2][2],
-    ]);
-    let result = rotation * to_vector(point) + Vector3::from(transform.translation);
+    ])
+}
+
+fn apply_with_components(
+    point: Point,
+    rotation: &Matrix3<f64>,
+    translation: Vector3<f64>,
+) -> Point {
+    let result = rotation * to_vector(point) + translation;
     [result.x, result.y, result.z]
+}
+
+fn transformed_rmsd(source: &[Point], target: &[Point], transform: &RigidTransform) -> Result<f64> {
+    let rotation = rotation_matrix(transform);
+    let translation = Vector3::from(transform.translation);
+    let sum_squared = source
+        .iter()
+        .zip(target)
+        .map(|(&source_point, target_point)| {
+            let fitted = rotation * to_vector(source_point) + translation;
+            let dx = fitted.x - target_point[0];
+            let dy = fitted.y - target_point[1];
+            let dz = fitted.z - target_point[2];
+            dx * dx + dy * dy + dz * dz
+        })
+        .sum::<f64>();
+    let value = (sum_squared / source.len() as f64).sqrt();
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(DockError("rigid fit RMSD is non-finite".into()))
+    }
+}
+
+/// Calculate RMSD after applying a previously fitted transform, without
+/// allocating a temporary transformed coordinate set.
+pub(crate) fn rmsd_after_transform(
+    source: &[Point],
+    target: &[Point],
+    transform: &RigidTransform,
+) -> Result<f64> {
+    validate_pair_sets(source, target, "RMSD")?;
+    transformed_rmsd(source, target, transform)
 }
 
 /// Return RMSD between two coordinate sets without refitting them.
@@ -108,6 +169,19 @@ pub fn rmsd(source: &[Point], target: &[Point]) -> Result<f64> {
 }
 
 fn validate_pair_sets(source: &[Point], target: &[Point], operation: &str) -> Result<()> {
+    validate_pair_lengths(source, target, operation)?;
+    if source
+        .iter()
+        .chain(target)
+        .flat_map(|point| point.iter())
+        .any(|coordinate| !coordinate.is_finite())
+    {
+        return Err(DockError(format!("{operation} coordinates must be finite")));
+    }
+    Ok(())
+}
+
+fn validate_pair_lengths(source: &[Point], target: &[Point], operation: &str) -> Result<()> {
     if source.is_empty() || target.is_empty() {
         return Err(DockError(format!(
             "{operation} requires non-empty coordinate sets"
@@ -120,22 +194,18 @@ fn validate_pair_sets(source: &[Point], target: &[Point], operation: &str) -> Re
             target.len()
         )));
     }
-    if source
-        .iter()
-        .chain(target)
-        .flat_map(|point| point.iter())
-        .any(|coordinate| !coordinate.is_finite())
-    {
-        return Err(DockError(format!("{operation} coordinates must be finite")));
-    }
     Ok(())
 }
 
-fn centroid(points: &[Point]) -> Vector3<f64> {
-    points
-        .iter()
-        .fold(Vector3::zeros(), |sum, point| sum + to_vector(*point))
-        / points.len() as f64
+fn centroid(points: &[Point], operation: &str) -> Result<Vector3<f64>> {
+    let mut sum = Vector3::zeros();
+    for point in points {
+        if !point.iter().all(|coordinate| coordinate.is_finite()) {
+            return Err(DockError(format!("{operation} coordinates must be finite")));
+        }
+        sum += to_vector(*point);
+    }
+    Ok(sum / points.len() as f64)
 }
 
 fn to_vector(point: Point) -> Vector3<f64> {

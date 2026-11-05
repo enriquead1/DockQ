@@ -11,6 +11,8 @@ pub mod geometry;
 pub mod io;
 pub mod mapping;
 pub mod output;
+#[cfg(feature = "profile-phases")]
+pub mod profile;
 pub mod scoring;
 pub mod selection;
 pub mod types;

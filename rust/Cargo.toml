@@ -9,6 +9,9 @@ license = "MIT"
 name = "dockq"
 path = "src/lib.rs"
 
+[features]
+profile-phases = []
+
 [[bin]]
 name = "DockQ"
 path = "src/main.rs"
