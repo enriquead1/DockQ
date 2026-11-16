@@ -38,11 +38,7 @@ options and --json results.json for structured output.
 
 ## Binary downloads
 
-The Rust release workflow creates platform-specific archives when a tag matching
-rust-v* is pushed. Each archive contains the executable, README, MIT license,
-third-party dependency license texts, build metadata, and SHA-256 checksums.
-Verify the archive checksums before use. GitHub releases belong to this
-repository and are separate from releases of the original DockQ project.
+Download the current [DockQ Rust v2.1.3 release](https://github.com/enriquead1/DockQ/releases/tag/rust-v2.1.3). It includes Linux, macOS, and Windows x86_64 archives. Each archive contains the executable, README, MIT license, third-party dependency license texts, build metadata, and SHA-256 checksums. Verify the checksums before use. Future Rust releases are published from this repository and remain separate from releases of the original DockQ project.
 
 ## Project notes
 

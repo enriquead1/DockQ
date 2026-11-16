@@ -12,6 +12,16 @@ Biopython parser behavior or for the original Python API. Read README.md and
 MIGRATION_STATUS.md before distributing it as a substitute for an existing
 Python-based workflow.
 
+## Current release
+
+DockQ Rust v2.1.3 is published at
+https://github.com/enriquead1/DockQ/releases/tag/rust-v2.1.3. Its tagged
+GitHub Actions run passed formatting, Clippy, tests, locked release builds,
+scoring smoke checks, third-party license collection, archive creation, and
+publication on Linux x86_64, macOS x86_64, and Windows x86_64. The next version
+should use the same rust-v prefix and be tagged only after the validation gate
+below passes.
+
 ## Validation gate
 
 Before tagging a release, the Rust CI workflow must pass on all three operating

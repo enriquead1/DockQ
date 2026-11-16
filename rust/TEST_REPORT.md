@@ -2,8 +2,8 @@
 
 ## Hosted cross-platform run
 
-GitHub Actions run [#3](https://github.com/enriquead1/DockQ/actions/runs/43830338000)
-validated commit e2e9ecb on 2026-11-16:
+GitHub Actions run [#4](https://github.com/enriquead1/DockQ/actions/runs/43830973320)
+validated commit 4bb2ba8 on 2026-11-16:
 
 | Platform | Runner | Formatting | Clippy | Tests | Release build | Scoring smoke |
 |---|---|---:|---:|---:|---:|---:|
@@ -15,9 +15,10 @@ Each job ran formatting checks, Clippy for all targets and features with
 warnings denied, all Rust tests, a locked release build, and the same 1A2K
 scoring example. The example returned DockQ 0.943 on all three systems.
 
-The release workflow repeats these checks and additionally assembles platform
-archives with dependency license texts, build metadata, and checksums. Its
-tagged release run is recorded on the repository's Releases page.
+The tagged release run [#1](https://github.com/enriquead1/DockQ/actions/runs/43831252156)
+also passed its repeated checks, generated dependency license notices and
+checksums, assembled the three platform archives, and published the
+[DockQ Rust v2.1.3 release](https://github.com/enriquead1/DockQ/releases/tag/rust-v2.1.3).
 
 ## Local Linux runtime check
 

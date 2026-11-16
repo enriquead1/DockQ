@@ -8,9 +8,10 @@ is not a replacement for its Python API.
 
 ## Install a release binary
 
-Download the archive matching your platform from this repository's GitHub
-Releases page. Extract it, read BUILD-INFO.txt, and verify SHA256SUMS.txt before
-running the executable.
+Download the archive matching your platform from the
+[DockQ Rust v2.1.3 GitHub release](https://github.com/enriquead1/DockQ/releases/tag/rust-v2.1.3).
+Extract it, read BUILD-INFO.txt, and verify SHA256SUMS.txt before running the
+executable.
 
 Release bundles target Linux x86_64, macOS x86_64, and Windows x86_64. CI checks
 formatting, Clippy, tests, release builds, and a representative scoring example
