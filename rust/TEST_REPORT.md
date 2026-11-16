@@ -1,35 +1,28 @@
 # Rust validation report
 
-## Local Linux validation
+## Hosted cross-platform run
 
-The released SVD implementation at the previous public revision passed the
-following checks locally on Linux x86_64 with the committed lockfile:
+GitHub Actions run [#3](https://github.com/enriquead1/DockQ/actions/runs/43830338000)
+validated commit e2e9ecb on 2026-11-16:
 
-| Check | Result |
-|---|---|
-| Formatting | Passed |
-| Clippy, all targets/features, warnings denied | Passed |
-| Unit tests | 48 passed |
-| Reference tests | 3 passed |
-| Mapping/search tests | 5 passed |
-| Locked release build | Passed |
-| Clean-environment CLI scoring example | Passed; DockQ 0.943 |
-| Dynamic dependencies | libc and libgcc only; no Python library |
+| Platform | Runner | Formatting | Clippy | Tests | Release build | Scoring smoke |
+|---|---|---:|---:|---:|---:|---:|
+| Linux x86_64 | ubuntu-22.04 | Pass | Pass | 56 passed | Pass | Pass |
+| macOS x86_64 | macos-15-intel | Pass | Pass | 56 passed | Pass | Pass |
+| Windows x86_64 | windows-2022 | Pass | Pass | 56 passed | Pass | Pass |
 
-These checks were rerun on 2026-11-16 from a fresh checkout of the public
-Rust branch. Cargo needed one build job in this container after an initial
-linker process returned an I/O error; the serial build completed successfully.
+Each job ran formatting checks, Clippy for all targets and features with
+warnings denied, all Rust tests, a locked release build, and the same 1A2K
+scoring example. The example returned DockQ 0.943 on all three systems.
 
-## Hosted cross-platform validation
+The release workflow repeats these checks and additionally assembles platform
+archives with dependency license texts, build metadata, and checksums. Its
+tagged release run is recorded on the repository's Releases page.
 
-The main branch now runs the same formatting, Clippy, test, release-build, and
-scoring-smoke checks on GitHub-hosted Linux x86_64, macOS x86_64, and Windows
-x86_64 runners. The release workflow repeats these checks while assembling the
-platform archives.
+## Local Linux runtime check
 
-Record the GitHub Actions run links and per-platform outcomes here once the
-main-branch workflow has completed. A platform is supported only after its
-build, tests, smoke check, and release archive job pass.
+A clean-environment run of the release executable scored 1A2K successfully.
+The Linux binary links to libc and libgcc and does not load Python libraries.
 
 ## Numerical compatibility
 
