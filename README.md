@@ -18,6 +18,15 @@ are listed in rust/README.md and rust/MIGRATION_STATUS.md.
 CI checks formatting, lint, tests, release builds, and a scoring smoke example on
 Linux, macOS, and Windows. See the Actions page for the status of each platform.
 
+## Clone this fork
+
+Clone the Rust implementation from this repository:
+
+```sh
+git clone --branch main https://github.com/enriquead1/DockQ.git
+cd DockQ
+```
+
 ## Build
 
 Install a stable Rust toolchain, then run from the repository root:
