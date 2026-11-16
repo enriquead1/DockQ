@@ -28,12 +28,12 @@ jobs:
             runner: windows-2022
             platform: windows-x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.x'
       - name: Check formatting
@@ -95,7 +95,7 @@ jobs:
           Compress-Archive -Path $bundle -DestinationPath "$bundle.zip" -Force
 
       - name: Upload release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: DockQ-${{ matrix.platform }}
           path: dist/DockQ-${{ matrix.platform }}.*
@@ -110,8 +110,8 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
         with:
           pattern: DockQ-*
           path: dist
